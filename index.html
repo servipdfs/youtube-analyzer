@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analizador de Canales YouTube</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1> Analizador de Canales YouTube</h1>
+      <p class="subtitle">Datos actualizados automáticamente cada 8 horas</p>
+      <p class="last-update" id="lastUpdate"></p>
+    </header>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Cargando datos...</p>
+    </div>
+
+    <div id="channelsGrid" class="channels-grid"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
