@@ -24,7 +24,21 @@ FACELESS_KEYWORDS = [
     'timelapse', 'speed', 'fast', 'quick', 'short', 'clips',
     'reaction', 'reactions', 'commentary', 'explained', 'analysis',
     'meditation', 'sleep', 'nature', 'animals', 'pets', 'cute',
-    'unbelievable', 'incredible', 'awesome', 'epic', 'ultimate'
+    'unbelievable', 'incredible', 'awesome', 'epic', 'ultimate',
+    'compilation', 'mix', 'playlist', 'collection', 'archive',
+    'news', 'updates', 'breaking', 'report', 'coverage',
+    'podcast', 'audio', 'sound', 'beats', 'instrumental'
+]
+
+# Palabras clave que indican que NO es faceless (personas, grupos, etc.)
+NON_FACELESS_KEYWORDS = [
+    'official', 'channel', 'tv', 'show', 'live', 'stream',
+    'vlog', 'vlogger', 'influencer', 'celebrity', 'star',
+    'band', 'group', 'artist', 'singer', 'musician', 'rapper',
+    'comedian', 'actor', 'actress', 'presenter', 'host',
+    'gaming', 'gameplay', 'lets play', 'let\'s play', 'walkthrough',
+    'twitch', 'streamer', 'youtuber', 'content creator',
+    'personal', 'my channel', 'i am', 'i\'m', 'my name'
 ]
 
 def get_recent_popular_videos(days=10, max_results=100):
@@ -38,7 +52,7 @@ def get_recent_popular_videos(days=10, max_results=100):
         
         # Búsqueda por vistas
         search_url = f'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=viewCount&publishedAfter={published_after}&maxResults=50&key={API_KEY}'
-        print(f'📡 URL de búsqueda: {search_url[:100]}...')
+        print(f'📡 Buscando por vistas...')
         
         response = requests.get(search_url)
         data = response.json()
@@ -51,6 +65,8 @@ def get_recent_popular_videos(days=10, max_results=100):
         
         # Búsqueda por relevancia
         search_url2 = f'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=relevance&publishedAfter={published_after}&maxResults=50&key={API_KEY}'
+        print(f'📡 Buscando por relevancia...')
+        
         response2 = requests.get(search_url2)
         data2 = response2.json()
         
@@ -99,7 +115,6 @@ def get_channel_stats(channel_id):
         data = response.json()
         
         if 'items' not in data or len(data['items']) == 0:
-            print(f'  ⚠️ No se encontraron estadísticas para el canal')
             return None
         
         stats = data['items'][0]['statistics']
@@ -110,12 +125,11 @@ def get_channel_stats(channel_id):
         video_count = int(stats.get('videoCount', 0))
         
         # Calcular ingresos estimados (CPM promedio de 3€)
-        # Asumimos que el 30% de las vistas son de los últimos 6 meses
         monthly_views = total_views * 0.30 / 180
         estimated_revenue = (monthly_views * 3) / 1000
         
         # Detectar si es probablemente faceless
-        is_likely_faceless = detect_faceless_channel(
+        is_likely_faceless, score, reasons = detect_faceless_channel(
             snippet['title'],
             subscribers,
             total_views,
@@ -143,6 +157,8 @@ def get_channel_stats(channel_id):
             'published_at': snippet['publishedAt'],
             'days_old': days_old,
             'is_likely_faceless': is_likely_faceless,
+            'faceless_score': score,
+            'faceless_reasons': reasons,
             'last_updated': datetime.now().isoformat()
         }
     
@@ -151,46 +167,83 @@ def get_channel_stats(channel_id):
         return None
 
 def detect_faceless_channel(name, subscribers, total_views, video_count, description):
-    """Detecta si un canal es probablemente faceless basado en heurísticas"""
+    """Detecta si un canal es probablemente faceless basado en heurísticas mejoradas"""
     score = 0
+    reasons = []
     
-    # 1. Nombre genérico con keywords típicos de faceless
     name_lower = name.lower()
     description_lower = description.lower()
     combined_text = name_lower + ' ' + description_lower
     
-    keyword_matches = sum(1 for kw in FACELESS_KEYWORDS if kw in combined_text)
-    if keyword_matches >= 2:
-        score += 3
-    elif keyword_matches >= 1:
-        score += 1
+    # CRITERIO 1: Verificar si tiene keywords de NO faceless (descartar inmediatamente)
+    non_faceless_matches = [kw for kw in NON_FACELESS_KEYWORDS if kw in combined_text]
+    if len(non_faceless_matches) >= 2:
+        return False, 0, [f'Descartado: contiene keywords no-faceless: {non_faceless_matches}']
     
-    # 2. Ratio vistas/suscriptores muy alto (típico de contenido viral sin personalidad)
+    # CRITERIO 2: Nombre genérico con keywords típicos de faceless
+    faceless_matches = [kw for kw in FACELESS_KEYWORDS if kw in combined_text]
+    if len(faceless_matches) >= 3:
+        score += 4
+        reasons.append(f'✅ Nombre/descripción con {len(faceless_matches)} keywords faceless')
+    elif len(faceless_matches) >= 2:
+        score += 2
+        reasons.append(f'✅ Nombre/descripción con {len(faceless_matches)} keywords faceless')
+    elif len(faceless_matches) >= 1:
+        score += 1
+        reasons.append(f'⚠️ Nombre/descripción con {len(faceless_matches)} keyword faceless')
+    
+    # CRITERIO 3: Ratio vistas/suscriptores muy alto (contenido viral sin personalidad)
     if subscribers > 0:
         views_per_sub = total_views / subscribers
-        if views_per_sub > 100:
+        if views_per_sub > 500:
+            score += 4
+            reasons.append(f'✅ Ratio vistas/sub muy alto: {views_per_sub:.1f}')
+        elif views_per_sub > 200:
             score += 3
-        elif views_per_sub > 50:
+            reasons.append(f'✅ Ratio vistas/sub alto: {views_per_sub:.1f}')
+        elif views_per_sub > 100:
             score += 2
-        elif views_per_sub > 20:
-            score += 1
+            reasons.append(f'⚠️ Ratio vistas/sub moderado: {views_per_sub:.1f}')
     
-    # 3. Pocos videos pero muchas vistas (contenido automatizado)
-    if video_count < 50 and total_views > 1000000:
-        score += 2
-    elif video_count < 100 and total_views > 500000:
+    # CRITERIO 4: Pocos videos pero muchas vistas (contenido automatizado)
+    if video_count < 30 and total_views > 5000000:
+        score += 4
+        reasons.append(f'✅ Muy pocos videos ({video_count}) con muchas vistas')
+    elif video_count < 100 and total_views > 1000000:
+        score += 3
+        reasons.append(f'✅ Pocos videos ({video_count}) con buenas vistas')
+    elif video_count < 200 and total_views > 500000:
         score += 1
+        reasons.append(f'⚠️ Videos moderados ({video_count})')
     
-    # 4. Canal nuevo con crecimiento rápido
-    if subscribers > 10000 and video_count < 30:
+    # CRITERIO 5: Canal nuevo con crecimiento rápido
+    if subscribers > 50000 and video_count < 50:
+        score += 3
+        reasons.append(f'✅ Canal nuevo con crecimiento rápido')
+    elif subscribers > 10000 and video_count < 100:
         score += 2
+        reasons.append(f'✅ Canal con buen crecimiento')
     
-    # 5. Nombre con números o patrones genéricos
-    if any(char.isdigit() for char in name) and len(name) < 20:
+    # CRITERIO 6: Nombre con patrones genéricos (números, "TV", "Official", etc.)
+    has_numbers = any(char.isdigit() for char in name)
+    has_generic_terms = any(term in name_lower for term in ['tv', 'official', 'channel', 'hub', 'zone', 'world'])
+    
+    if has_numbers and len(name) < 25:
+        score += 2
+        reasons.append(f'✅ Nombre con números (patrón genérico)')
+    if has_generic_terms:
         score += 1
+        reasons.append(f'⚠️ Nombre con términos genéricos')
     
-    # Umbral: si el score es >= 3, es probablemente faceless
-    return score >= 3
+    # CRITERIO 7: Descripción corta o genérica
+    if len(description) < 100:
+        score += 1
+        reasons.append(f'⚠️ Descripción muy corta')
+    
+    # Umbral estricto: score >= 6 para considerar faceless
+    is_faceless = score >= 6
+    
+    return is_faceless, score, reasons
 
 def load_existing_data():
     """Carga datos existentes"""
@@ -211,7 +264,7 @@ def save_data(data):
 
 def main():
     print('='*60)
-    print('🚀 INICIANDO ANÁLISIS DE CANALES FACELESS')
+    print('🚀 ANÁLISIS DE CANALES FACELESS (ESTRICTO)')
     print('📅 Últimos 10 días | 💰 Más de 1000€/mes')
     print('='*60)
     
@@ -238,18 +291,20 @@ def main():
         channel_data = get_channel_stats(channel['id'])
         
         if channel_data:
-            # Solo añadir si es faceless
             if channel_data['is_likely_faceless']:
                 faceless_count += 1
-                print(f'  ✅ FACELESS DETECTADO')
+                print(f'  ✅ FACELESS DETECTADO (Score: {channel_data["faceless_score"]})')
                 print(f'     📊 Vistas: {channel_data["total_views"]:,}')
                 print(f'     💰 Ingresos: {channel_data["estimated_monthly_revenue"]}€')
                 print(f'     👥 Subs: {channel_data["subscribers"]:,}')
+                print(f'     📝 Razones: {", ".join(channel_data["faceless_reasons"][:3])}')
                 
                 all_faceless_channels.append(channel_data)
             else:
                 non_faceless_count += 1
-                print(f'  ⚠️ No es faceless (score bajo)')
+                print(f'  ❌ NO es faceless (Score: {channel_data["faceless_score"]})')
+                if channel_data['faceless_reasons']:
+                    print(f'     Razón: {channel_data["faceless_reasons"][0]}')
         else:
             print(f'  ❌ No se pudo analizar')
     
@@ -260,9 +315,10 @@ def main():
     # 5. Tomar solo los 100 primeros
     top_100 = all_faceless_channels[:100]
     
-    print(f'\n🏆 TOP 100 CANALES FACELESS:')
-    for i, channel in enumerate(top_100[:10], 1):  # Mostrar solo los 10 primeros
-        print(f'  #{i} {channel["name"]}: {channel["total_views"]:,} vistas - {channel["estimated_monthly_revenue"]}€/mes')
+    print(f'\n🏆 TOP 10 CANALES FACELESS:')
+    for i, channel in enumerate(top_100[:10], 1):
+        print(f'  #{i} {channel["name"]}')
+        print(f'      Vistas: {channel["total_views"]:,} | Ingresos: {channel["estimated_monthly_revenue"]}€ | Score: {channel["faceless_score"]}')
     
     if len(top_100) > 10:
         print(f'  ... y {len(top_100) - 10} canales más')
