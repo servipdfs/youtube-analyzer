@@ -3,19 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Analizador de Canales YouTube</title>
+  <title>Analizador de Canales YouTube Faceless</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1> Analizador de Canales YouTube</h1>
-      <p class="subtitle">Canales faceless con más visualizaciones de los últimos 5 días</p>
+      <h1>🎭 Analizador de Canales Faceless</h1>
+      <p class="subtitle">Videos virales de los últimos 5 días con más ingresos</p>
       <p class="last-update" id="lastUpdate"></p>
     </header>
+
+    <div class="filters">
+      <h3>💰 Filtrar por ingresos mensuales:</h3>
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-min="0" data-max="999999999">Todos</button>
+        <button class="filter-btn" data-min="300" data-max="1000">300€ - 1.000€</button>
+        <button class="filter-btn" data-min="1001" data-max="2000">1.001€ - 2.000€</button>
+        <button class="filter-btn" data-min="2001" data-max="3000">2.001€ - 3.000€</button>
+        <button class="filter-btn" data-min="3001" data-max="4000">3.001€ - 4.000€</button>
+        <button class="filter-btn" data-min="4001" data-max="5000">4.001€ - 5.000€</button>
+        <button class="filter-btn" data-min="5001" data-max="999999999">+5.000€</button>
+      </div>
+      <p class="results-count" id="resultsCount"></p>
+    </div>
 
     <div id="loading" class="loading">
       <div class="spinner"></div>
@@ -25,6 +39,6 @@
     <div id="channelsGrid" class="channels-grid"></div>
   </div>
 
-  <script src="script.js?v=2"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>
