@@ -1,3 +1,4 @@
+name: YouTube Channel Analyzer
 import os
 import json
 import requests
