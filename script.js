@@ -1,6 +1,7 @@
+let allChannels = [];
+
 async function loadData() {
   try {
-    // Cache busting: agregar timestamp único para evitar caché
     const timestamp = Date.now();
     const response = await fetch(`data/channels.json?t=${timestamp}`, {
       cache: 'no-store',
@@ -21,7 +22,11 @@ async function loadData() {
       'Última actualización: ' + lastUpdate.toLocaleString('es-ES') + 
       ' (Recargado: ' + new Date().toLocaleTimeString('es-ES') + ')';
     
-    displayChannels(data.channels);
+    // Guardar todos los canales
+    allChannels = data.channels || [];
+    
+    // Mostrar todos por defecto
+    displayChannels(allChannels);
     document.getElementById('loading').style.display = 'none';
     
   } catch (error) {
@@ -36,9 +41,12 @@ function displayChannels(channels) {
   grid.innerHTML = '';
   
   if (!channels || channels.length === 0) {
-    grid.innerHTML = '<p style="color:#fff; text-align:center;">No hay datos disponibles aún.</p>';
+    grid.innerHTML = '<p style="color:#fff; text-align:center; font-size:18px;">No hay canales en este rango de ingresos.</p>';
+    document.getElementById('resultsCount').textContent = '0 canales encontrados';
     return;
   }
+  
+  document.getElementById('resultsCount').textContent = `${channels.length} canales encontrados`;
   
   channels.forEach((channel, index) => {
     const card = document.createElement('div');
@@ -91,4 +99,35 @@ function formatNumber(num) {
   return num.toString();
 }
 
-loadData();
+// Configurar filtros
+function setupFilters() {
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remover active de todos
+      filterButtons.forEach(btn => btn.classList.remove('active'));
+      
+      // Añadir active al clickeado
+      this.classList.add('active');
+      
+      // Obtener rango
+      const min = parseFloat(this.getAttribute('data-min'));
+      const max = parseFloat(this.getAttribute('data-max'));
+      
+      // Filtrar canales
+      const filtered = allChannels.filter(channel => {
+        const revenue = channel.estimated_monthly_revenue || 0;
+        return revenue >= min && revenue <= max;
+      });
+      
+      // Mostrar filtrados
+      displayChannels(filtered);
+    });
+  });
+}
+
+// Inicializar
+loadData().then(() => {
+  setupFilters();
+});
