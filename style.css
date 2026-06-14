@@ -24,3 +24,18 @@ header h1 { font-size: 42px; margin-bottom: 10px; }
 .metric.revenue .metric-value { color: #fff; }
 .metric.revenue .metric-label { color: rgba(255,255,255,0.9); }
 @media (max-width: 768px) { .channels-grid { grid-template-columns: 1fr; } header h1 { font-size: 32px; } }
+.channel-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+  font-size: 13px;
+  color: #666;
+}
+
+.channel-info p {
+  margin: 5px 0;
+}
+
+.channel-info strong {
+  color: #333;
+}
