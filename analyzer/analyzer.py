@@ -19,24 +19,48 @@ FACELESS_KEYWORDS = [
     'science', 'education', 'learning', 'documentary', 'history',
     'mystery', 'creepy', 'scary', 'horror', 'paranormal',
     'finance', 'money', 'investing', 'crypto', 'bitcoin',
-    'health', 'fitness', 'workout', 'nutrition', 'wellness'
+    'health', 'fitness', 'workout', 'nutrition', 'wellness',
+    'story', 'stories', 'animation', 'animated', 'cartoon',
+    'timelapse', 'speed', 'fast', 'quick', 'short', 'clips',
+    'reaction', 'reactions', 'commentary', 'explained', 'analysis'
 ]
 
-def get_recent_popular_videos(days=10, max_results=50):
+def get_recent_popular_videos(days=5, max_results=100):
     """Obtiene videos populares de los últimos N días"""
     try:
         published_after = (datetime.utcnow() - timedelta(days=days)).isoformat() + 'Z'
         
-        search_url = f'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=viewCount&publishedAfter={published_after}&maxResults={max_results}&key={API_KEY}'
+        # Hacer múltiples búsquedas para obtener más resultados
+        all_videos = []
+        
+        # Búsqueda por vistas
+        search_url = f'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=viewCount&publishedAfter={published_after}&maxResults=50&key={API_KEY}'
         response = requests.get(search_url)
         data = response.json()
         
-        if 'items' not in data:
-            print(f'Error en search API: {data}')
-            return []
+        if 'items' in data:
+            all_videos.extend(data['items'])
         
+        # Búsqueda por relevancia
+        search_url2 = f'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=relevance&publishedAfter={published_after}&maxResults=50&key={API_KEY}'
+        response2 = requests.get(search_url2)
+        data2 = response2.json()
+        
+        if 'items' in data2:
+            all_videos.extend(data2['items'])
+        
+        # Eliminar duplicados
+        seen = set()
+        unique_videos = []
+        for video in all_videos:
+            video_id = video['id']['videoId']
+            if video_id not in seen:
+                seen.add(video_id)
+                unique_videos.append(video)
+        
+        # Extraer canales únicos
         channels = {}
-        for item in data['items']:
+        for item in unique_videos:
             if 'channelId' in item['snippet']:
                 channel_id = item['snippet']['channelId']
                 channel_name = item['snippet']['channelTitle']
@@ -149,8 +173,8 @@ def detect_faceless_channel(name, subscribers, total_views, video_count, descrip
     if any(char.isdigit() for char in name) and len(name) < 20:
         score += 1
     
-    # Umbral: si el score es >= 4, es probablemente faceless
-    return score >= 4
+    # Umbral: si el score es >= 3, es probablemente faceless
+    return score >= 3
 
 def load_existing_data():
     """Carga datos existentes"""
@@ -166,11 +190,11 @@ def save_data(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def main():
-    print('🚀 Iniciando análisis de canales faceless de los últimos 10 días...')
+    print('🚀 Iniciando análisis de 100 canales faceless nuevos de los últimos 5 días...')
     
     # 1. Obtener canales de videos recientes
-    print('📊 Buscando videos populares de los últimos 10 días...')
-    recent_channels = get_recent_popular_videos(days=10, max_results=50)
+    print('📊 Buscando videos populares de los últimos 5 días...')
+    recent_channels = get_recent_popular_videos(days=5, max_results=100)
     
     if not recent_channels:
         print('❌ No se pudieron obtener canales recientes')
@@ -182,7 +206,7 @@ def main():
     data = load_existing_data()
     
     # 3. Analizar cada canal
-    updated_channels = []
+    all_channels = []
     faceless_count = 0
     
     for channel in recent_channels:
@@ -190,14 +214,10 @@ def main():
         channel_data = get_channel_stats(channel['id'])
         
         if channel_data:
-            # Filtrar: solo canales faceless con ingresos > 1000€
-            if (channel_data['is_likely_faceless'] and 
-                channel_data['estimated_monthly_revenue'] >= 1000):
-                
+            # Solo añadir si es faceless
+            if channel_data['is_likely_faceless']:
                 faceless_count += 1
-                print(f'✅ FACELESS DETECTADO: {channel_data["name"]}')
-                print(f'   Ingresos: {channel_data["estimated_monthly_revenue"]}€')
-                print(f'   Ratio vistas/sub: {channel_data["views_per_subscriber"]}')
+                print(f'✅ FACELESS: {channel_data["name"]} - {channel_data["total_views"]} vistas')
                 
                 # Buscar si ya existe
                 existing = next((c for c in data['channels'] if c['channel_id'] == channel_data['channel_id']), None)
@@ -215,7 +235,7 @@ def main():
                     
                     existing['history'] = existing['history'][-30:]
                     existing.update(channel_data)
-                    updated_channels.append(existing)
+                    all_channels.append(existing)
                 else:
                     channel_data['history'] = [{
                         'date': datetime.now().isoformat(),
@@ -223,26 +243,27 @@ def main():
                         'total_views': channel_data['total_views'],
                         'estimated_revenue': channel_data['estimated_monthly_revenue']
                     }]
-                    updated_channels.append(channel_data)
+                    all_channels.append(channel_data)
             else:
-                if not channel_data['is_likely_faceless']:
-                    print(f'⚠️ {channel_data["name"]}: No parece faceless (score bajo)')
-                else:
-                    print(f'⚠️ {channel_data["name"]}: Ingresos < 1000€ ({channel_data["estimated_monthly_revenue"]}€)')
+                print(f'⚠️ {channel_data["name"]}: No parece faceless')
         else:
             print(f'❌ No se pudo analizar {channel["name"]}')
     
-    # 4. Ordenar por ingresos (mayor a menor)
-    updated_channels.sort(key=lambda x: x['estimated_monthly_revenue'], reverse=True)
+    # 4. Ordenar por visualizaciones totales (mayor a menor)
+    all_channels.sort(key=lambda x: x['total_views'], reverse=True)
     
-    # 5. Guardar datos
-    data['channels'] = updated_channels
+    # 5. Tomar solo los 100 primeros
+    top_100 = all_channels[:100]
+    
+    # 6. Guardar datos
+    data['channels'] = top_100
     data['last_run'] = datetime.now().isoformat()
     save_data(data)
     
     print(f'\n✅ Análisis completado.')
     print(f'📊 Total canales analizados: {len(recent_channels)}')
-    print(f'🎭 Canales faceless con >1000€: {faceless_count}')
+    print(f'🎭 Canales faceless encontrados: {faceless_count}')
+    print(f'🏆 Top 100 guardados (ordenados por visualizaciones)')
 
 if __name__ == '__main__':
     main()
