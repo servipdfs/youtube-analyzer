@@ -1,40 +1,166 @@
-name: YouTube Channel Analyzer
+import os
+import json
+import requests
+from datetime import datetime
 
-on:
-  schedule:
-    - cron: '0 0,8,16 * * *'
-  workflow_dispatch:
+# Configuración
+API_KEY = os.environ.get('YOUTUBE_API_KEY')
+DATA_FILE = 'data/channels.json'
 
-permissions:
-  contents: write
+def get_trending_channels(max_channels=10):
+    """Obtiene los canales de los videos trending actuales"""
+    if not API_KEY:
+        print("❌ Error: La variable YOUTUBE_API_KEY no está configurada.")
+        return []
+        
+    try:
+        # Obtener videos trending de la API
+        trending_url = f'https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=50&key={API_KEY}'
+        response = requests.get(trending_url)
+        data = response.json()
+        
+        if 'error' in data:
+            print(f"❌ Error de la API de YouTube: {data['error'].get('message')}")
+            return []
+            
+        if 'items' not in data:
+            return []
+        
+        # Extraer canales únicos evitando duplicados de un mismo creador en tendencias
+        channels = {}
+        for video in data['items']:
+            channel_id = video['snippet']['channelId']
+            channel_name = video['snippet']['channelTitle']
+            
+            if channel_id not in channels:
+                channels[channel_id] = {
+                    'name': channel_name,
+                    'id': channel_id
+                }
+        
+        return list(channels.values())[:max_channels]
+    
+    except Exception as e:
+        print(f'❌ Error al obtener canales trending: {e}')
+        return []
 
-jobs:
-  analyze:
-    runs-on: ubuntu-latest
+def get_channel_stats(channel_id):
+    """Obtiene las estadísticas detalladas de un canal específico"""
+    try:
+        stats_url = f'https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id={channel_id}&key={API_KEY}'
+        response = requests.get(stats_url)
+        data = response.json()
+        
+        if 'items' not in data or len(data['items']) == 0:
+            return None
+        
+        stats = data['items'][0]['statistics']
+        snippet = data['items'][0]['snippet']
+        
+        # Calcular ingresos estimados (CPM promedio de 3€)
+        total_views = int(stats.get('viewCount', 0))
+        monthly_views = total_views / 60  # Estimación base: canal con 5 años de historia
+        estimated_revenue = (monthly_views * 3) / 1000
+        
+        # Control seguro de miniaturas (por si falta la resolución 'high')
+        thumbnails = snippet.get('thumbnails', {})
+        thumbnail_url = thumbnails.get('high', {}).get('url', thumbnails.get('default', {}).get('url', ''))
+        
+        return {
+            'channel_id': channel_id,
+            'name': snippet['title'],
+            'description': snippet.get('description', ''),
+            'thumbnail': thumbnail_url,
+            'subscribers': int(stats.get('subscriberCount', 0)),
+            'total_views': total_views,
+            'video_count': int(stats.get('videoCount', 0)),
+            'estimated_monthly_revenue': round(estimated_revenue, 2),
+            'last_updated': datetime.now().isoformat()
+        }
     
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    except Exception as e:
+        print(f'❌ Error analizando el canal {channel_id}: {e}')
+        return None
+
+def load_existing_data():
+    """Carga los datos históricos del archivo JSON de manera segura"""
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:
+                    return json.loads(content)
+        except Exception as e:
+            print(f"⚠️ El JSON existente está corrupto o ilegible, se creará uno nuevo: {e}")
+            
+    return {'channels': [], 'last_run': None, 'trending_date': None}
+
+def save_data(data):
+    """Guarda la estructura de datos en el archivo JSON"""
+    os.makedirs('data', exist_ok=True)
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def main():
+    print('🚀 Iniciando análisis de canales trending...')
     
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+    # 1. Obtener canales en tendencia hoy
+    print('📊 Obteniendo canales de tendencia...')
+    trending_channels = get_trending_channels(max_channels=10)
     
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r analyzer/requirements.txt
+    if not trending_channels:
+        print('❌ No se obtuvieron canales en esta ejecución. Proceso abortado para proteger el historial.')
+        return
     
-    - name: Run analyzer
-      env:
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      run: python analyzer/analyzer.py
+    print(f'✅ Encontrados {len(trending_channels)} canales únicos en tendencias.')
     
-    - name: Commit and push changes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add data/channels.json
-        git diff --staged --quiet || git commit -m "Update channel data [skip ci]"
-        git push
+    # 2. Cargar el historial que ya tenemos guardado
+    data = load_existing_data()
+    
+    # Mapeamos los canales guardados en un diccionario para buscarlos instantáneamente por ID
+    db_channels = {c['channel_id']: c for c in data.get('channels', [])}
+    
+    # 3. Procesar y actualizar los canales de la tendencia actual
+    for channel in trending_channels:
+        print(f'📊 Analizando: {channel["name"]}')
+        channel_data = get_channel_stats(channel['id'])
+        
+        if channel_data:
+            current_time = datetime.now().isoformat()
+            new_history_entry = {
+                'date': current_time,
+                'subscribers': channel_data['subscribers'],
+                'total_views': channel_data['total_views'],
+                'estimated_revenue': channel_data['estimated_monthly_revenue']
+            }
+            
+            if channel['id'] in db_channels:
+                # El canal YA existe en nuestra base de datos histórica -> Se actualiza
+                existing = db_channels[channel['id']]
+                if 'history' not in existing:
+                    existing['history'] = []
+                
+                existing['history'].append(new_history_entry)
+                existing['history'] = existing['history'][-30:]  # Conservar solo los últimos 30 registros
+                
+                # Actualizar los datos generales (excepto la lista 'history' para no romperla)
+                existing.update({k: v for k, v in channel_data.items() if k != 'history'})
+            else:
+                # El canal es NUEVO -> Se añade por primera vez con su historial inicial
+                channel_data['history'] = [new_history_entry]
+                db_channels[channel['id']] = channel_data
+                
+            print(f'✅ {channel_data["name"]}: {channel_data["subscribers"]} subs')
+        else:
+            print(f'❌ No se pudieron procesar las estadísticas de {channel["name"]}')
+    
+    # 4. Guardar manteniendo TODOS los canales (los nuevos + los antiguos que no salieron hoy)
+    data['channels'] = list(db_channels.values())
+    data['last_run'] = datetime.now().isoformat()
+    data['trending_date'] = datetime.now().isoformat()
+    
+    save_data(data)
+    print(f'✅ Análisis completado. El JSON ahora contiene un total de {len(data["channels"])} canales históricos.')
+
+if __name__ == '__main__':
+    main()
