@@ -9,7 +9,7 @@
       "total_views": 129036823441,
       "video_count": 987,
       "estimated_monthly_revenue": 6451841.17,
-      "last_updated": "2026-06-14T19:33:06.180278",
+      "last_updated": "2026-06-14T19:56:18.003401",
       "history": [
         {
           "date": "2026-06-14T19:16:22.968041",
@@ -19,6 +19,12 @@
         },
         {
           "date": "2026-06-14T19:33:06.181568",
+          "subscribers": 501000000,
+          "total_views": 129036823441,
+          "estimated_revenue": 6451841.17
+        },
+        {
+          "date": "2026-06-14T19:56:18.004862",
           "subscribers": 501000000,
           "total_views": 129036823441,
           "estimated_revenue": 6451841.17
@@ -34,7 +40,7 @@
       "total_views": 29509072900,
       "video_count": 4663,
       "estimated_monthly_revenue": 1475453.65,
-      "last_updated": "2026-06-14T19:33:06.705371",
+      "last_updated": "2026-06-14T19:56:18.391790",
       "history": [
         {
           "date": "2026-06-14T19:16:23.350192",
@@ -44,6 +50,12 @@
         },
         {
           "date": "2026-06-14T19:33:06.706798",
+          "subscribers": 110000000,
+          "total_views": 29509072900,
+          "estimated_revenue": 1475453.65
+        },
+        {
+          "date": "2026-06-14T19:56:18.393449",
           "subscribers": 110000000,
           "total_views": 29509072900,
           "estimated_revenue": 1475453.65
@@ -59,7 +71,7 @@
       "total_views": 4335786034,
       "video_count": 512,
       "estimated_monthly_revenue": 216789.3,
-      "last_updated": "2026-06-14T19:33:07.124213",
+      "last_updated": "2026-06-14T19:56:18.697424",
       "history": [
         {
           "date": "2026-06-14T19:16:23.661730",
@@ -69,6 +81,12 @@
         },
         {
           "date": "2026-06-14T19:33:07.125526",
+          "subscribers": 20800000,
+          "total_views": 4335786034,
+          "estimated_revenue": 216789.3
+        },
+        {
+          "date": "2026-06-14T19:56:18.698833",
           "subscribers": 20800000,
           "total_views": 4335786034,
           "estimated_revenue": 216789.3
@@ -84,7 +102,7 @@
       "total_views": 5445338889,
       "video_count": 1828,
       "estimated_monthly_revenue": 272266.94,
-      "last_updated": "2026-06-14T19:33:07.559957",
+      "last_updated": "2026-06-14T19:56:19.044863",
       "history": [
         {
           "date": "2026-06-14T19:16:23.999837",
@@ -94,6 +112,12 @@
         },
         {
           "date": "2026-06-14T19:33:07.561321",
+          "subscribers": 21000000,
+          "total_views": 5445338889,
+          "estimated_revenue": 272266.94
+        },
+        {
+          "date": "2026-06-14T19:56:19.046439",
           "subscribers": 21000000,
           "total_views": 5445338889,
           "estimated_revenue": 272266.94
@@ -109,7 +133,7 @@
       "total_views": 9573371493,
       "video_count": 7801,
       "estimated_monthly_revenue": 478668.57,
-      "last_updated": "2026-06-14T19:33:07.972401",
+      "last_updated": "2026-06-14T19:56:19.463522",
       "history": [
         {
           "date": "2026-06-14T19:16:24.380361",
@@ -122,9 +146,15 @@
           "subscribers": 16800000,
           "total_views": 9573371493,
           "estimated_revenue": 478668.57
+        },
+        {
+          "date": "2026-06-14T19:56:19.465194",
+          "subscribers": 16800000,
+          "total_views": 9573371493,
+          "estimated_revenue": 478668.57
         }
       ]
     }
   ],
-  "last_run": "2026-06-14T19:33:07.973892"
+  "last_run": "2026-06-14T19:56:19.465208"
 }
