@@ -1,6 +1,8 @@
 async function loadData() {
   try {
-    const response = await fetch('data/channels.json');
+    // Agregar timestamp para evitar caché del navegador
+    const timestamp = new Date().getTime();
+    const response = await fetch(`data/channels.json?t=${timestamp}`);
     const data = await response.json();
     
     const lastUpdate = new Date(data.last_run);
@@ -16,7 +18,6 @@ async function loadData() {
       '<p style="color:#fff;">Error al cargar los datos. Intenta de nuevo más tarde.</p>';
   }
 }
-
 function displayChannels(channels) {
   const grid = document.getElementById('channelsGrid');
   grid.innerHTML = '';
