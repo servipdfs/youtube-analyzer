@@ -21,9 +21,7 @@ function displayChannels(channels) {
   const grid = document.getElementById('channelsGrid');
   grid.innerHTML = '';
   
-  channels.sort((a, b) => b.subscribers - a.subscribers);
-  
-  channels.forEach(channel => {
+  channels.forEach((channel, index) => {
     const card = document.createElement('div');
     card.className = 'channel-card';
     
@@ -31,7 +29,7 @@ function displayChannels(channels) {
       <div class="channel-header">
         <img src="${channel.thumbnail}" alt="${channel.name}" class="channel-avatar">
         <div>
-          <div class="channel-name">${channel.name}</div>
+          <div class="channel-name">#${index + 1} ${channel.name}</div>
           <a href="https://youtube.com/channel/${channel.channel_id}" 
              target="_blank" class="channel-link">
             Ver en YouTube →
@@ -56,6 +54,11 @@ function displayChannels(channels) {
           <div class="metric-value">${channel.estimated_monthly_revenue}€</div>
           <div class="metric-label">Ingresos/mes</div>
         </div>
+      </div>
+      
+      <div class="channel-info">
+        <p><strong>Ratio vistas/sub:</strong> ${channel.views_per_subscriber}</p>
+        <p><strong>Antigüedad:</strong> ${channel.days_old} días</p>
       </div>
     `;
     
