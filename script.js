@@ -1,13 +1,25 @@
 async function loadData() {
   try {
-    // Agregar timestamp para evitar caché del navegador
-    const timestamp = new Date().getTime();
-    const response = await fetch(`data/channels.json?t=${timestamp}`);
+    // Cache busting: agregar timestamp único para evitar caché
+    const timestamp = Date.now();
+    const response = await fetch(`data/channels.json?t=${timestamp}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const data = await response.json();
     
     const lastUpdate = new Date(data.last_run);
     document.getElementById('lastUpdate').textContent = 
-      'Última actualización: ' + lastUpdate.toLocaleString('es-ES');
+      'Última actualización: ' + lastUpdate.toLocaleString('es-ES') + 
+      ' (Recargado: ' + new Date().toLocaleTimeString('es-ES') + ')';
     
     displayChannels(data.channels);
     document.getElementById('loading').style.display = 'none';
@@ -18,9 +30,15 @@ async function loadData() {
       '<p style="color:#fff;">Error al cargar los datos. Intenta de nuevo más tarde.</p>';
   }
 }
+
 function displayChannels(channels) {
   const grid = document.getElementById('channelsGrid');
   grid.innerHTML = '';
+  
+  if (!channels || channels.length === 0) {
+    grid.innerHTML = '<p style="color:#fff; text-align:center;">No hay datos disponibles aún.</p>';
+    return;
+  }
   
   channels.forEach((channel, index) => {
     const card = document.createElement('div');
